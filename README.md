@@ -11,6 +11,8 @@ This should be all you need to run your software.
 
 The docker container will download your source code, find a suitable buildpack and use it to transform the code into a droplet and then run it. Caching is applied on all levels through a persistent volume (/tmp/buildpack-cache). This caching directory is purely for caching, so there's no requirement to have consistent reads/writes between multiple containers.
 
+Amazingly this compatibility layer uses less than 100 lines of code.
+
 
 TODO
 ===
