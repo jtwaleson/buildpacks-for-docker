@@ -1,0 +1,60 @@
+#!/bin/bash
+
+set -e
+
+echo '-------> Source code retrieval starting'
+SOURCE_TARGET="$1"
+if [ -z "$SOURCE_TARGET" ]; then
+    echo "No argument found, first argument to run this container should be the http (and later s3/local file) location of the source package"
+    exit 1
+fi
+cd /tmp/buildpack-cache
+wget -O source.zip "$SOURCE_TARGET"
+unzip -qo source.zip -d /home/vcap
+
+DIGEST=$(sha256sum source.zip | cut -d ' ' -f 1)
+echo '-------> Source code retrieved ' $DIGEST
+
+
+if [ -f "${DIGEST}.zip" ]; then
+    echo '-------> Cached droplet detected, starting that'
+    unzip -qo /tmp/buildpack-cache/${DIGEST}.zip -d /home/vcap
+else
+    echo '-------> Buildpack detection starting'
+    MATCH=''
+    for buildpack in $(ls -1 /srv/buildpacks); do
+        if /srv/buildpacks/$buildpack/bin/detect /home/vcap/ 1>/dev/null; then
+            echo $buildpack matches
+            MATCH="$buildpack"
+        fi
+    done
+
+    if [ -z "$MATCH" ]; then
+        echo "No matching buildpack found"
+        exit 1
+    fi
+
+
+    export CF_STACK=cflinuxfs2
+    export VCAP_APP_PORT=8080
+    export PORT=$VCAP_APP_PORT
+
+
+    echo '-------> Buildpack compile starting'
+    mkdir -p /tmp/buildpack-cache
+    cd /home/vcap
+    /srv/buildpacks/$MATCH/bin/compile /home/vcap /tmp/buildpack-cache
+
+
+    echo '-------> Creating droplet for cache'
+    cd /home/vcap
+    zip -qr /tmp/buildpack-cache/${DIGEST}.zip .
+fi
+
+
+echo '-------> Buildpack completed, starting app'
+chown -R vcap:vcap /home/vcap
+rm -rf /app
+ln -sfT /home/vcap /app
+cd /home/vcap
+sudo --preserve-env --set-home -u vcap /bin/bash -c 'test -n "/home/vcap/.profile.d/*" && source /home/vcap/.profile.d/*; python hello-world.py'
