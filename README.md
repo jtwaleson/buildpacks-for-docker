@@ -16,7 +16,6 @@ Amazingly this compatibility layer uses less than 100 lines of code.
 
 TODO
 ===
-- properly parse the start command from the buildpack or the Procfile, it's now hardcoded to hello-world.py
 - allow specification of S3 buckets as the source code location (instance roles can be defined for ECS)
 - allow specification of local files as the source code location
 - include all major buildpacks

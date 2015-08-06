@@ -8,7 +8,7 @@ ENTRYPOINT ["/srv/runner"]
 
 VOLUME /tmp/buildpack-cache
 
-RUN apt-get update && apt-get install python git -y --force-yes
+RUN apt-get update && apt-get install python git python-yaml -y --force-yes
 
 RUN mkdir -p /srv/buildpacks/ && cd /srv/buildpacks/ && git clone https://github.com/cloudfoundry/python-buildpack.git && cd python-buildpack && git submodule update --init
 

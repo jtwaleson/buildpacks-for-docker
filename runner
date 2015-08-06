@@ -15,7 +15,6 @@ unzip -qo source.zip -d /home/vcap
 DIGEST=$(sha256sum source.zip | cut -d ' ' -f 1)
 echo '-------> Source code retrieved ' $DIGEST
 
-
 if [ -f "${DIGEST}.zip" ]; then
     echo '-------> Cached droplet detected, starting that'
     unzip -qo /tmp/buildpack-cache/${DIGEST}.zip -d /home/vcap
@@ -36,8 +35,6 @@ else
 
 
     export CF_STACK=cflinuxfs2
-    export VCAP_APP_PORT=8080
-    export PORT=$VCAP_APP_PORT
 
 
     echo '-------> Buildpack compile starting'
@@ -53,8 +50,39 @@ fi
 
 
 echo '-------> Buildpack completed, starting app'
+
+if [ -x /srv/buildpacks/$MATCH/bin/release ]; then
+    set +e
+    X=$(/srv/buildpacks/$MATCH/bin/release /home/vcap | python -c "import yaml, sys; print(yaml.load(sys.stdin)['default_process_types']['web'])")
+    set -e
+    if [ -n "$X" ]; then
+        CMD="$X"
+    fi
+fi
+
+if [ -f /home/vcap/Procfile ]; then
+    set +e
+    X=$(cat /home/vcap/Procfile | python -c "import yaml, sys; print(yaml.load(sys.stdin)['web'])")
+    set -e
+    if [ -n "$X" ]; then
+        CMD="$X"
+    fi
+fi
+
 chown -R vcap:vcap /home/vcap
 rm -rf /app
 ln -sfT /home/vcap /app
 cd /home/vcap
-sudo --preserve-env --set-home -u vcap /bin/bash -c 'test -n "/home/vcap/.profile.d/*" && source /home/vcap/.profile.d/*; python hello-world.py'
+
+export VCAP_APP_PORT=8080
+export PORT=$VCAP_APP_PORT
+
+mkdir -p /home/vcap/.profile.d
+touch /home/vcap/.profile.d/no-glob-errors
+
+cat /home/vcap/.profile.d/* > /tmp/profile
+rm -rf /home/vcap/.profile.d
+mkdir -p /home/vcap/.profile.d
+mv /tmp/profile /home/vcap/.profile.d/concatenated
+
+sudo --preserve-env --set-home -u vcap /bin/bash --login -c "source /home/vcap/.profile.d/*; env; $CMD"
