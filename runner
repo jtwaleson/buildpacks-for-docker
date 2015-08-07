@@ -85,4 +85,4 @@ rm -rf /home/vcap/.profile.d
 mkdir -p /home/vcap/.profile.d
 mv /tmp/profile /home/vcap/.profile.d/concatenated
 
-sudo --preserve-env --set-home -u vcap /bin/bash --login -c "source /home/vcap/.profile.d/*; env; $CMD"
+sudo --preserve-env --set-home -u vcap /bin/bash --login -c "source /home/vcap/.profile.d/concatenated; $CMD"
